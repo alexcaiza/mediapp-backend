@@ -1,6 +1,8 @@
 package com.mitocode.controller;
 
+import java.io.IOException;
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -12,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,15 +23,21 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.mitocode.dto.ConsultDTO;
 import com.mitocode.dto.ConsultListExamDTO;
+import com.mitocode.dto.ConsultProcDTO;
+import com.mitocode.dto.FilterConsultDTO;
 import com.mitocode.exception.ModelNotFoundException;
 import com.mitocode.model.Consult;
 import com.mitocode.model.Exam;
+import com.mitocode.model.MediaFile;
 import com.mitocode.service.IConsultService;
+import com.mitocode.service.IMediaFileService;
 
 @RestController
 @RequestMapping("/consults")
@@ -36,6 +45,9 @@ public class ConsultController {
 
 	@Autowired
     private IConsultService service;
+	
+	@Autowired
+    private IMediaFileService mfService;
 
     @Autowired
     private ModelMapper mapper;
@@ -121,5 +133,55 @@ public class ConsultController {
         resource.add(link1.withRel("patient-info1"));
         
         return resource;
+    }
+    
+    @PostMapping("/search/others")
+    public ResponseEntity<List<ConsultDTO>> searchByOthers(@RequestBody FilterConsultDTO filterDTO){
+        List<Consult> consults = service.search(filterDTO.getDni(), filterDTO.getFullname());
+        List<ConsultDTO> consultsDTO = mapper.map(consults, new TypeToken<List<ConsultDTO>>() {}.getType());
+
+        return new ResponseEntity<>(consultsDTO, HttpStatus.OK);
+    }
+
+    @GetMapping("/search/date")
+    public ResponseEntity<List<ConsultDTO>> searchByDates(@RequestParam(value = "date1") String date1, @RequestParam(value = "date2") String date2){
+        List<Consult> consults = service.searchByDates(LocalDateTime.parse(date1), LocalDateTime.parse(date2));
+        List<ConsultDTO> consultsDTO = mapper.map(consults, new TypeToken<List<ConsultDTO>>() {}.getType());
+
+        return new ResponseEntity<>(consultsDTO, HttpStatus.OK);
+    }
+
+    @GetMapping("/callProcedure")
+    public ResponseEntity<List<ConsultProcDTO>> callProcOrFunction(){
+        List<ConsultProcDTO> consults = service.callProcedureOrFunction();
+        return new ResponseEntity<>(consults, HttpStatus.OK);
+    }
+
+    @GetMapping(value = "/generateReport", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE) // APPLICATION_PDF_VALUE
+    public ResponseEntity<byte[]> generateReport() throws Exception{
+        byte[] data = null;
+        data = service.generateReport();
+        return new ResponseEntity<>(data, HttpStatus.OK);
+    }
+
+    @PostMapping(value = "/saveFile", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
+    public ResponseEntity<Void> saveFile(@RequestParam("file") MultipartFile file) throws Exception{
+
+        MediaFile mf = new MediaFile();
+        mf.setFiletype(file.getContentType());
+        mf.setFilename(file.getOriginalFilename());
+        mf.setValue(file.getBytes());
+
+        mfService.save(mf);
+
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @GetMapping(value = "/readFile/{idFile}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public ResponseEntity<byte[]> leerArchivo(@PathVariable("idFile") Integer idFile) throws IOException {
+
+        byte[] arr = mfService.findById(idFile).getValue();
+
+        return new ResponseEntity<>(arr, HttpStatus.OK);
     }
 }

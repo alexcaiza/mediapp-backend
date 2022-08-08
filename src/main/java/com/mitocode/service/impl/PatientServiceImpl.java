@@ -8,6 +8,9 @@ import com.mitocode.repo.IGenericRepo;
 import com.mitocode.repo.IPatientRepo;
 import com.mitocode.service.IPatientService;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 @Service
 public class PatientServiceImpl extends CRUDImpl<Patient, Integer> implements IPatientService {
 
@@ -17,6 +20,11 @@ public class PatientServiceImpl extends CRUDImpl<Patient, Integer> implements IP
     @Override
     protected IGenericRepo<Patient, Integer> getRepo() {
         return repo;
+    }
+    
+    @Override
+    public Page<Patient> listPage(Pageable page) {
+        return repo.findAll(page);
     }
 
     /*

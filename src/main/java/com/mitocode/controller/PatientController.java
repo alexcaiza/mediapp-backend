@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import com.mitocode.dto.PatientDTO;
 import com.mitocode.exception.ModelNotFoundException;
 import com.mitocode.model.Patient;
@@ -104,5 +107,12 @@ public class PatientController {
         resource.add(link1.withRel("patient-info1"));
         
         return resource;
+    }
+    
+    @GetMapping("/pageable")
+    public ResponseEntity<Page<PatientDTO>> listPage(Pageable pageable){
+        Page<PatientDTO> page = service.listPage(pageable).map(p -> mapper.map(p, PatientDTO.class));
+
+        return new ResponseEntity<>(page, HttpStatus.OK);
     }
 }
